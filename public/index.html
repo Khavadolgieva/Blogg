@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enkel BloggApp</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        header {
+            background-color: #007BFF;
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            width: 80%;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #007BFF;
+        }
+
+        form {
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        form div {
+            margin-bottom: 10px;
+        }
+
+        form div label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        form div input[type="text"],
+        form div input[type="password"],
+        form div textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        form div button {
+            background-color: #007BFF;
+            color: #ffffff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        form div button:hover {
+            background-color: #0056b3;
+        }
+
+        #loginMessage, #postMessage {
+            margin-bottom: 20px;
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .blog-post {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .blog-post h3 {
+            color: #007BFF;
+        }
+
+        .blog-post p {
+            line-height: 1.6;
+        }
+
+        .blog-post small {
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Min Blogg</h1>
+    </header>
+    <div class="container">
+        <div id="loginMessage"></div>
+        <form id="loginForm">
+            <div>
+                <label for="username">Brukernavn:</label>
+                <input type="text" id="username" required>
+            </div>
+            <div>
+                <label for="password">Passord:</label>
+                <input type="password" id="password" required>
+            </div>
+            <div>
+                <button type="submit">Logg inn</button>
+            </div>
+        </form>
+
+        <div id="postForm" class="hidden">
+            <h2>Nytt Blogginnlegg</h2>
+            <div id="postMessage"></div>
+            <form id="newPostForm">
+                <div>
+                    <label for="postTitle">Tittel:</label>
+                    <input type="text" id="postTitle" required>
+                </div>
+                <div>
+                    <label for="postContent">Innhold:</label>
+                    <textarea id="postContent" rows="4" cols="50" required></textarea>
+                </div>
+                <div>
+                    <button type="submit">Opprett Innlegg</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="blogPosts"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchBlogPosts();
+        
+            //håndterer pålogging
+            document.getElementById('loginForm').addEventListener('submit', event => {
+                event.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+        
+                fetch('http://localhost:5000/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('loginMessage').innerText = 'Vellykket pålogging!';
+                        document.getElementById('loginMessage').classList.remove('error');
+                        document.getElementById('loginForm').classList.add('hidden');
+                        document.getElementById('postForm').classList.remove('hidden');
+                    } else {
+                        document.getElementById('loginMessage').innerText = 'Feil brukernavn eller passord';
+                        document.getElementById('loginMessage').classList.add('error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Feil ved pålogging:', error);
+                    document.getElementById('loginMessage').innerText = 'Det oppstod en feil ved pålogging.';
+                    document.getElementById('loginMessage').classList.add('error');
+                });
+            });
+        
+            //håndterer opprettelse av nye blogginnlegg
+            document.getElementById('newPostForm').addEventListener('submit', event => {
+                event.preventDefault();
+                const title = document.getElementById('postTitle').value;
+                const content = document.getElementById('postContent').value;
+        
+                fetch('http://localhost:5000/api/blogginnlegg', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        fetchBlogPosts(); 
+                        document.getElementById('postTitle').value = '';
+                        document.getElementById('postContent').value = '';
+                        document.getElementById('postMessage').innerText = 'Innlegget ble opprettet!';
+                        document.getElementById('postMessage').classList.remove('error');
+                    } else {
+                        document.getElementById('postMessage').innerText = 'Kunne ikke opprette innlegget';
+                        document.getElementById('postMessage').classList.add('error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Feil ved opprettelse av blogginnlegg:', error);
+                    document.getElementById('postMessage').innerText = 'Det oppstod en feil ved opprettelse av innlegget.';
+                    document.getElementById('postMessage').classList.add('error');
+                });
+            });
+        
+            //funksjon for å hente og vise blogginnlegg
+            function fetchBlogPosts() {
+                fetch('http://localhost:5000/api/blogginnlegg')
+                    .then(response => response.json())
+                    .then(posts => {
+                        const postsContainer = document.getElementById('blogPosts');
+                        postsContainer.innerHTML = '';
+                        posts.forEach(post => {
+                            const postElement = document.createElement('div');
+                            postElement.className = 'blog-post';
+                            postElement.innerHTML = `
+                                <h3>${post.title}</h3>
+                                <p>${post.content}</p>
+                                <small>Oprettet: ${new Date(post.dateCreated).toLocaleDateString()}</small>
+                            `;
+                            postsContainer.appendChild(postElement);
+                        });
+                    })
+                    .catch(error => console.error('Feil ved henting av blogginnlegg:', error));
+            }
+        });
+        </script>
+        
+</body>
+</html>
